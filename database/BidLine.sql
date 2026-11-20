@@ -272,3 +272,209 @@ CREATE TABLE [Trading].Follow
     CONSTRAINT PK_Follow
         PRIMARY KEY (Member_ID, Auction_ID)
 );
+-- Member -> City
+ALTER TABLE [identity].Member
+ADD CONSTRAINT FK_Member_City
+FOREIGN KEY (City_ID)
+REFERENCES [identity].City(City_ID);
+
+-- Member -> Member (Self Reference)
+ALTER TABLE [identity].Member
+ADD CONSTRAINT FK_Member_InvitedBy
+FOREIGN KEY (Invited_By_Member_ID)
+REFERENCES [identity].Member(Member_ID);
+
+-- Wallet -> Member
+ALTER TABLE [identity].Wallet
+ADD CONSTRAINT FK_Wallet_Member
+FOREIGN KEY (Member_ID)
+REFERENCES [identity].Member(Member_ID);
+
+-- Warehouse -> City
+ALTER TABLE [Operations].Warehouse
+ADD CONSTRAINT FK_Warehouse_City
+FOREIGN KEY (City_ID)
+REFERENCES [identity].City(City_ID);
+
+-- Employee -> Member
+ALTER TABLE [Operations].Employee
+ADD CONSTRAINT FK_Employee_Member
+FOREIGN KEY (Member_ID)
+REFERENCES [identity].Member(Member_ID);
+
+-- Employee -> Warehouse
+ALTER TABLE [Operations].Employee
+ADD CONSTRAINT FK_Employee_Warehouse
+FOREIGN KEY (Warehouse_ID)
+REFERENCES [Operations].Warehouse(Warehouse_ID);
+
+-- Warehouse -> Employee (Manager)
+ALTER TABLE [Operations].Warehouse
+ADD CONSTRAINT FK_Warehouse_Manager
+FOREIGN KEY (Manager_ID)
+REFERENCES [Operations].Employee(Member_ID);
+
+
+-- Category -> Category (Parent Category)
+ALTER TABLE [Catalog].Category
+ADD CONSTRAINT FK_Category_Parent
+FOREIGN KEY (Parent_Category_Code)
+REFERENCES [Catalog].Category(Category_Code);
+
+-- Item -> Member (Seller)
+ALTER TABLE [Catalog].Item
+ADD CONSTRAINT FK_Item_Seller
+FOREIGN KEY (Seller_ID)
+REFERENCES [identity].Member(Member_ID);
+
+-- Item -> Category
+ALTER TABLE [Catalog].Item
+ADD CONSTRAINT FK_Item_Category
+FOREIGN KEY (Category_Code)
+REFERENCES [Catalog].Category(Category_Code);
+
+-- Item -> Warehouse
+ALTER TABLE [Catalog].Item
+ADD CONSTRAINT FK_Item_Warehouse
+FOREIGN KEY (Warehouse_ID)
+REFERENCES [Operations].Warehouse(Warehouse_ID);
+
+-- Item -> Employee (Inspector)
+ALTER TABLE [Catalog].Item
+ADD CONSTRAINT FK_Item_Inspector
+FOREIGN KEY (Inspector_ID)
+REFERENCES [Operations].Employee(Member_ID);
+
+-- Item_Photo -> Item
+ALTER TABLE [Catalog].Item_Photo
+ADD CONSTRAINT FK_ItemPhoto_Item
+FOREIGN KEY (Item_ID)
+REFERENCES [Catalog].Item(Item_ID)
+ON DELETE CASCADE; --هنا cascade عشان قال انه لازم لو مسحت ال item ال item_Photo الخاصه بيه تتمسح
+
+
+
+-- Auction -> Item
+ALTER TABLE [Trading].Auction
+ADD CONSTRAINT FK_Auction_Item
+FOREIGN KEY (Item_ID)
+REFERENCES [Catalog].Item(Item_ID);
+
+-- Bid -> Auction
+ALTER TABLE [Trading].Bid
+ADD CONSTRAINT FK_Bid_Auction
+FOREIGN KEY (Auction_ID)
+REFERENCES [Trading].Auction(Auction_ID);
+
+-- Bid -> Member
+ALTER TABLE [Trading].Bid
+ADD CONSTRAINT FK_Bid_Member
+FOREIGN KEY (Member_ID)
+REFERENCES [identity].Member(Member_ID);
+
+-- Follow -> Member
+ALTER TABLE [Trading].Follow
+ADD CONSTRAINT FK_Follow_Member
+FOREIGN KEY (Member_ID)
+REFERENCES [identity].Member(Member_ID);
+
+-- Follow -> Auction
+ALTER TABLE [Trading].Follow
+ADD CONSTRAINT FK_Follow_Auction
+FOREIGN KEY (Auction_ID)
+REFERENCES [Trading].Auction(Auction_ID);
+
+
+
+--------------------------------------------------------
+-----3.2 
+Alter table [identity].Member
+Add Language_Type  NVARCHAR(2) NOT NULL
+CONSTRAINT DF_Member_LanguageType DEFAULT 'ar'
+CONSTRAINT CK_Member_LanguageType CHECK (Language_Type IN('en','ar'))
+
+----3.3
+Alter table [Catalog].Item
+ADD Is_Featured VARCHAR(3) NOT NULL
+CONSTRAINT DF_Item_IsFeatured DEFAULT 'No'
+CONSTRAINT CK_Item_IsFeatured CHECK (Is_Featured IN('Yes','No'))
+---3.4
+EXEC sp_rename 'Trading.Bid.IP_Address', 'DeviceIp', 'COLUMN';
+
+ALTER TABLE Operations.Warehouse
+DROP CONSTRAINT CK_Warehouse_Capacity;   
+
+EXEC sp_rename 'Operations.Warehouse.Capacity', 'MaxItems', 'COLUMN';
+
+ALTER TABLE Operations.Warehouse
+ADD CONSTRAINT CK_Warehouse_MaxItems CHECK (MaxItems > 0);
+
+---3.5
+ALTER TABLE [identity].Member
+ALTER COLUMN Full_Name NVARCHAR(150) NOT NULL;
+---3.6
+ALTER TABLE Operations.Warehouse
+DROP CONSTRAINT CK_Warehouse_MaxItems;
+
+ALTER TABLE Operations.Warehouse
+ALTER COLUMN MaxItems SMALLINT NOT NULL;
+
+ALTER TABLE Operations.Warehouse
+ADD CONSTRAINT CK_Warehouse_MaxItems CHECK (MaxItems > 0);
+
+--3.7
+ALTER TABLE Catalog.Category
+DROP CONSTRAINT CK_Category_Commission; 
+
+ALTER TABLE Catalog.Category
+ADD CONSTRAINT CK_Category_Commission
+    CHECK (Commission_Pct >= 0 AND Commission_Pct <= 25);
+
+--3.8
+ALTER TABLE Trading.Auction
+DROP CONSTRAINT CK_Auction_Status;      
+
+ALTER TABLE Trading.Auction
+DROP CONSTRAINT DF_Auction_Status;     
+
+ALTER TABLE Trading.Auction
+ALTER COLUMN Status VARCHAR(13) NOT NULL;
+
+ALTER TABLE Trading.Auction
+ADD CONSTRAINT DF_Auction_Status DEFAULT 'PendingReview' FOR Status;
+
+ALTER TABLE Trading.Auction
+ADD CONSTRAINT CK_Auction_Status
+    CHECK (Status IN ('PendingReview', 'Draft', 'Live', 'Ended', 'Cancelled'));
+
+--3.9
+ALTER TABLE Trading.Auction
+ADD Bye_Now DECIMAL(12,2) NULL;
+
+
+ALTER TABLE [Trading].Auction
+WITH CHECK ADD CONSTRAINT CK_Aution_BuyNow_Above_Start
+CHECK(Bye_Now>Starting_Price);
+---3.10
+ALTER TABLE [Identity].Member
+ADD CONSTRAINT UQ_Member_Mobile Unique(Mobile);
+
+--3.11
+ALTER TABLE [identity].Member
+DROP CONSTRAINT DF_Member_Verified;
+
+ALTER TABLE [identity].Member
+DROP COLUMN Is_Verified;
+
+ALTER TABLE [identity].Member
+ADD VerifiedAt DATETIME2(3) NULL;
+
+--3.12
+CREATE SCHEMA [Marketing];
+GO
+
+Alter schema [Marketing]
+Transfer [Trading].Follow;
+Go
+
+    
